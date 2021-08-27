@@ -10,7 +10,7 @@ Gem::Specification.new do |spec|
 
   spec.summary = 'Time-windowed rate tracker with configurable resolution'
   spec.description = 'Thread-safe time-windowed rate tracker that records values into bucketed time slots. ' \
-                       'Supports rate calculation, sum, count, average, and percentile queries over a sliding window.'
+                     'Supports rate calculation, sum, count, average, and percentile queries over a sliding window.'
   spec.homepage = 'https://philiprehberger.com/open-source-packages/ruby/philiprehberger-rate_window'
   spec.license = 'MIT'
 
