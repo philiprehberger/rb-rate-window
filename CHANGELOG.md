@@ -7,6 +7,14 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.2.0] - 2026-04-03
+
+### Added
+- `median` method as shortcut for 50th percentile
+- `min` and `max` tracking across the sliding window
+- `histogram` method for value distribution analysis
+- Improved `percentile` calculation with linear interpolation
+
 ## [0.1.4] - 2026-03-31
 
 ### Added

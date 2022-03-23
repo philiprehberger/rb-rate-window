@@ -17,6 +17,8 @@ module Philiprehberger
         @mutex = Mutex.new
         @buckets = Array.new(@bucket_count, 0.0)
         @counts = Array.new(@bucket_count, 0)
+        @mins = Array.new(@bucket_count, Float::INFINITY)
+        @maxs = Array.new(@bucket_count, -Float::INFINITY)
         @last_bucket_index = current_bucket_index
         @last_time = now
       end
@@ -29,8 +31,11 @@ module Philiprehberger
         @mutex.synchronize do
           cleanup
           idx = current_bucket_index % @bucket_count
-          @buckets[idx] += value.to_f
+          val = value.to_f
+          @buckets[idx] += val
           @counts[idx] += 1
+          @mins[idx] = val if val < @mins[idx]
+          @maxs[idx] = val if val > @maxs[idx]
         end
         self
       end
@@ -79,7 +84,7 @@ module Philiprehberger
         end
       end
 
-      # Calculate a percentile of bucket values.
+      # Calculate a percentile of recorded values using linear interpolation.
       #
       # @param p [Numeric] percentile (0-100)
       # @return [Float] the percentile value
@@ -92,8 +97,85 @@ module Philiprehberger
           return 0.0 if values.empty?
 
           sorted = values.sort
-          k = (p / 100.0 * (sorted.length - 1)).round
-          sorted[k]
+          rank = p / 100.0 * (sorted.length - 1)
+          lower = rank.floor
+          upper = rank.ceil
+
+          return sorted[lower].to_f if lower == upper
+
+          weight = rank - lower
+          (sorted[lower] + (weight * (sorted[upper] - sorted[lower]))).to_f
+        end
+      end
+
+      # Median value across active buckets (shortcut for percentile(50)).
+      #
+      # @return [Float] the median value
+      def median
+        percentile(50)
+      end
+
+      # Minimum recorded value in the current window.
+      #
+      # @return [Float] minimum value, or 0.0 if no recordings
+      def min
+        @mutex.synchronize do
+          cleanup
+          result = Float::INFINITY
+          @bucket_count.times do |i|
+            result = @mins[i] if @counts[i].positive? && @mins[i] < result
+          end
+          result == Float::INFINITY ? 0.0 : result
+        end
+      end
+
+      # Maximum recorded value in the current window.
+      #
+      # @return [Float] maximum value, or 0.0 if no recordings
+      def max
+        @mutex.synchronize do
+          cleanup
+          result = -Float::INFINITY
+          @bucket_count.times do |i|
+            result = @maxs[i] if @counts[i].positive? && @maxs[i] > result
+          end
+          result == -Float::INFINITY ? 0.0 : result
+        end
+      end
+
+      # Returns a histogram of value distribution across equal-width buckets.
+      #
+      # @param buckets [Integer] number of histogram buckets (default: 10)
+      # @return [Array<Hash>] array of { range:, count: } hashes
+      def histogram(buckets: 10)
+        raise Error, 'buckets must be positive' unless buckets.positive?
+
+        @mutex.synchronize do
+          cleanup
+          values = collect_values
+          return [] if values.empty?
+
+          min_val = values.min
+          max_val = values.max
+
+          if min_val == max_val
+            return [{ range: (min_val..max_val), count: values.length }]
+          end
+
+          width = (max_val - min_val).to_f / buckets
+          result = Array.new(buckets) do |i|
+            range_start = min_val + (i * width)
+            range_end = min_val + ((i + 1) * width)
+            { range: (range_start..range_end), count: 0 }
+          end
+
+          values.each do |v|
+            idx = ((v - min_val) / width).floor
+            idx = buckets - 1 if idx >= buckets
+            result[idx][:count] += 1
+          end
+
+          result
         end
       end
 
@@ -104,6 +186,8 @@ module Philiprehberger
         @mutex.synchronize do
           @buckets.fill(0.0)
           @counts.fill(0)
+          @mins.fill(Float::INFINITY)
+          @maxs.fill(-Float::INFINITY)
           @last_bucket_index = current_bucket_index
           @last_time = now
         end
@@ -127,11 +211,15 @@ module Philiprehberger
         if elapsed >= @bucket_count
           @buckets.fill(0.0)
           @counts.fill(0)
+          @mins.fill(Float::INFINITY)
+          @maxs.fill(-Float::INFINITY)
         elsif elapsed.positive?
           elapsed.times do |i|
             idx = (@last_bucket_index + 1 + i) % @bucket_count
             @buckets[idx] = 0.0
             @counts[idx] = 0
+            @mins[idx] = Float::INFINITY
+            @maxs[idx] = -Float::INFINITY
           end
         end
 
