@@ -96,15 +96,7 @@ module Philiprehberger
           values = collect_values
           return 0.0 if values.empty?
 
-          sorted = values.sort
-          rank = p / 100.0 * (sorted.length - 1)
-          lower = rank.floor
-          upper = rank.ceil
-
-          return sorted[lower].to_f if lower == upper
-
-          weight = rank - lower
-          (sorted[lower] + (weight * (sorted[upper] - sorted[lower]))).to_f
+          interpolate(values.sort, p / 100.0)
         end
       end
 
@@ -120,6 +112,32 @@ module Philiprehberger
       # @return [Float] the 95th percentile value
       def p95
         percentile(95)
+      end
+
+      # Compute multiple quantiles in a single pass (sorted once).
+      #
+      # @param fractions [Array<Float>] quantile fractions in [0.0, 1.0]
+      # @return [Hash{Float => Float}] mapping of fraction to interpolated value
+      # @raise [ArgumentError] if any fraction is outside [0.0, 1.0]
+      def quantiles(*fractions)
+        fractions.each do |fraction|
+          unless fraction.is_a?(Numeric) && fraction.between?(0.0, 1.0)
+            raise ArgumentError, 'fractions must be between 0.0 and 1.0 inclusive'
+          end
+        end
+
+        @mutex.synchronize do
+          cleanup
+          values = collect_values
+          if values.empty?
+            return fractions.to_h { |fraction| [fraction, 0.0] }
+          end
+
+          sorted = values.sort
+          fractions.to_h do |fraction|
+            [fraction, interpolate(sorted, fraction)]
+          end
+        end
       end
 
       # Minimum recorded value in the current window.
@@ -240,6 +258,17 @@ module Philiprehberger
           result << @buckets[i] if @counts[i].positive?
         end
         result
+      end
+
+      def interpolate(sorted, fraction)
+        rank = fraction * (sorted.length - 1)
+        lower = rank.floor
+        upper = rank.ceil
+
+        return sorted[lower].to_f if lower == upper
+
+        weight = rank - lower
+        (sorted[lower] + (weight * (sorted[upper] - sorted[lower]))).to_f
       end
     end
   end

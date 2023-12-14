@@ -54,6 +54,17 @@ tracker.median           # => shortcut for percentile(50)
 tracker.p95              # => shortcut for percentile(95)
 ```
 
+### Multiple quantiles in one pass
+
+Compute several quantiles together (values are sorted only once per call):
+
+```ruby
+tracker.quantiles(0.25, 0.5, 0.75, 0.95)
+# => { 0.25 => 4.0, 0.5 => 7.5, 0.75 => 10.0, 0.95 => 18.2 }
+```
+
+Fractions must be between `0.0` and `1.0` inclusive. An empty tracker returns `0.0` for each requested fraction.
+
 ### Min / Max
 
 ```ruby
@@ -110,6 +121,7 @@ tracker.count   # => 0
 | `#percentile(p)` | Calculate percentile (0-100) with linear interpolation |
 | `#median` | Shortcut for `percentile(50)` |
 | `#p95` | Shortcut for `percentile(95)` |
+| `#quantiles(*fractions)` | Hash mapping each fraction (0.0–1.0) to its percentile value in one pass |
 | `#min` | Minimum recorded value in the window |
 | `#max` | Maximum recorded value in the window |
 | `#histogram(buckets: 10)` | Value distribution as array of `{ range:, count: }` hashes |

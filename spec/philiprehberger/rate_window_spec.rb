@@ -452,6 +452,144 @@ RSpec.describe Philiprehberger::RateWindow do
     end
   end
 
+  describe '#quantiles' do
+    let(:tracker) { described_class.new(window: 60, resolution: 1) }
+
+    it 'returns a hash keyed by the requested fractions' do
+      t = described_class.new(window: 60, resolution: 0.001)
+      10.times do |i|
+        t.record(i + 1)
+        sleep(0.002)
+      end
+
+      result = t.quantiles(0.25, 0.5, 0.75)
+
+      expect(result).to be_a(Hash)
+      expect(result.keys).to eq([0.25, 0.5, 0.75])
+    end
+
+    it 'returns values matching the equivalent percentile call' do
+      t = described_class.new(window: 60, resolution: 0.001)
+      [3, 1, 4, 1, 5, 9, 2, 6, 5, 3].each do |v|
+        t.record(v)
+        sleep(0.002)
+      end
+
+      result = t.quantiles(0.25, 0.5, 0.75, 0.95)
+
+      expect(result[0.25]).to eq(t.percentile(25))
+      expect(result[0.5]).to eq(t.percentile(50))
+      expect(result[0.75]).to eq(t.percentile(75))
+      expect(result[0.95]).to eq(t.percentile(95))
+    end
+
+    it 'accepts 0.0 and 1.0 as valid fractions' do
+      t = described_class.new(window: 60, resolution: 0.001)
+      (1..5).each do |v|
+        t.record(v)
+        sleep(0.002)
+      end
+
+      result = t.quantiles(0.0, 1.0)
+
+      expect(result[0.0]).to eq(1.0)
+      expect(result[1.0]).to eq(5.0)
+    end
+
+    it 'returns zero for each fraction on an empty tracker (matches #percentile)' do
+      result = tracker.quantiles(0.25, 0.5, 0.75)
+
+      expect(result).to eq({ 0.25 => 0.0, 0.5 => 0.0, 0.75 => 0.0 })
+    end
+
+    it 'supports a single fraction' do
+      t = described_class.new(window: 60, resolution: 0.001)
+      (1..4).each do |v|
+        t.record(v)
+        sleep(0.002)
+      end
+
+      result = t.quantiles(0.5)
+
+      expect(result).to eq({ 0.5 => 2.5 })
+    end
+
+    it 'preserves the order of requested fractions' do
+      t = described_class.new(window: 60, resolution: 0.001)
+      (1..10).each do |v|
+        t.record(v)
+        sleep(0.002)
+      end
+
+      result = t.quantiles(0.9, 0.1, 0.5)
+
+      expect(result.keys).to eq([0.9, 0.1, 0.5])
+    end
+
+    it 'raises ArgumentError for a fraction below 0.0' do
+      tracker.record(1)
+
+      expect { tracker.quantiles(-0.1) }
+        .to raise_error(ArgumentError, /fractions must be between 0.0 and 1.0/)
+    end
+
+    it 'raises ArgumentError for a fraction above 1.0' do
+      tracker.record(1)
+
+      expect { tracker.quantiles(1.5) }
+        .to raise_error(ArgumentError, /fractions must be between 0.0 and 1.0/)
+    end
+
+    it 'raises ArgumentError when any fraction in a list is invalid' do
+      tracker.record(1)
+
+      expect { tracker.quantiles(0.25, 0.5, 2.0) }
+        .to raise_error(ArgumentError, /fractions must be between 0.0 and 1.0/)
+    end
+
+    it 'raises ArgumentError for non-numeric fractions' do
+      tracker.record(1)
+
+      expect { tracker.quantiles('half') }
+        .to raise_error(ArgumentError, /fractions must be between 0.0 and 1.0/)
+    end
+
+    it 'returns Float values' do
+      t = described_class.new(window: 60, resolution: 0.001)
+      (1..5).each do |v|
+        t.record(v)
+        sleep(0.002)
+      end
+
+      result = t.quantiles(0.25, 0.75)
+
+      result.each_value { |v| expect(v).to be_a(Float) }
+    end
+
+    it 'handles a single recording across all fractions' do
+      tracker.record(42)
+
+      result = tracker.quantiles(0.25, 0.5, 0.75)
+
+      expect(result).to eq({ 0.25 => 42.0, 0.5 => 42.0, 0.75 => 42.0 })
+    end
+
+    it 'is consistent across multiple quantile orderings' do
+      t = described_class.new(window: 60, resolution: 0.001)
+      (1..20).each do |v|
+        t.record(v)
+        sleep(0.002)
+      end
+
+      forward = t.quantiles(0.1, 0.5, 0.9)
+      reversed = t.quantiles(0.9, 0.5, 0.1)
+
+      expect(forward[0.1]).to eq(reversed[0.1])
+      expect(forward[0.5]).to eq(reversed[0.5])
+      expect(forward[0.9]).to eq(reversed[0.9])
+    end
+  end
+
   describe '#reset' do
     let(:tracker) { described_class.new(window: 60, resolution: 1) }
 
