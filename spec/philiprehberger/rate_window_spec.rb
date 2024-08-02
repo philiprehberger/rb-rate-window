@@ -432,9 +432,9 @@ RSpec.describe Philiprehberger::RateWindow do
     it 'total count matches number of active buckets' do
       t = described_class.new(window: 60, resolution: 0.001)
       t.record(1)
-      sleep(0.002)
+      sleep(0.02)
       t.record(2)
-      sleep(0.002)
+      sleep(0.02)
       t.record(3)
       result = t.histogram(buckets: 3)
       total = result.sum { |h| h[:count] }
@@ -444,7 +444,7 @@ RSpec.describe Philiprehberger::RateWindow do
     it 'ranges cover min to max' do
       t = described_class.new(window: 60, resolution: 0.001)
       t.record(10)
-      sleep(0.002)
+      sleep(0.02)
       t.record(50)
       result = t.histogram(buckets: 4)
       expect(result.first[:range].begin).to eq(10.0)
