@@ -204,6 +204,46 @@ module Philiprehberger
         end
       end
 
+      # Take an atomic snapshot of all stats in a single mutex acquisition.
+      #
+      # Runs cleanup once, then computes sum, count, rate, average, min, max,
+      # median, and p95 in a single pass under the same lock.
+      #
+      # @return [Hash] snapshot with keys :sum, :count, :rate, :average,
+      #   :min, :max, :median, :p95. Returns zero/nil-safe values for an
+      #   empty tracker.
+      def snapshot
+        @mutex.synchronize do
+          cleanup
+
+          total_sum = @buckets.sum
+          total_count = @counts.sum
+
+          min_val = Float::INFINITY
+          max_val = -Float::INFINITY
+          @bucket_count.times do |i|
+            if @counts[i].positive?
+              min_val = @mins[i] if @mins[i] < min_val
+              max_val = @maxs[i] if @maxs[i] > max_val
+            end
+          end
+
+          values = collect_values
+          sorted = values.sort
+
+          {
+            sum: total_sum,
+            count: total_count,
+            rate: total_sum / @window,
+            average: total_count.zero? ? 0.0 : total_sum / total_count,
+            min: min_val == Float::INFINITY ? 0.0 : min_val,
+            max: max_val == -Float::INFINITY ? 0.0 : max_val,
+            median: sorted.empty? ? 0.0 : interpolate(sorted, 0.5),
+            p95: sorted.empty? ? 0.0 : interpolate(sorted, 0.95)
+          }
+        end
+      end
+
       # Reset all buckets.
       #
       # @return [self]

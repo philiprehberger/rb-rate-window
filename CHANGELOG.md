@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.5.0] - 2026-04-16
+
+### Added
+- `Tracker#snapshot` returns a plain hash with all stats (`sum`, `count`, `rate`, `average`, `min`, `max`, `median`, `p95`) computed atomically under a single mutex acquisition and a single cleanup pass
+
 ## [0.4.0] - 2026-04-16
 
 ### Added
