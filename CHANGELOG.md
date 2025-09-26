@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.0] - 2026-04-18
+
+### Added
+- `Tracker#variance` and `Tracker#stddev` — population variance and standard deviation over the current window; also exposed under `:variance` / `:stddev` keys in `#snapshot`
+
 ## [0.5.0] - 2026-04-16
 
 ### Added

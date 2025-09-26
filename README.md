@@ -77,6 +77,21 @@ tracker.min   # => 3.0
 tracker.max   # => 20.0
 ```
 
+### Spread statistics
+
+```ruby
+tracker = Philiprehberger::RateWindow.new(window: 60, resolution: 0.001)
+[2, 4, 4, 4, 5, 5, 7, 9].each do |v|
+  tracker.record(v)
+  sleep(0.002)
+end
+
+tracker.variance   # => 4.0  (population variance)
+tracker.stddev     # => 2.0  (population standard deviation)
+```
+
+An empty tracker returns `0.0` for both. A single value also returns `0.0`.
+
 ### Histogram
 
 ```ruby
@@ -112,14 +127,16 @@ tracker.record(30)
 
 tracker.snapshot
 # => {
-#   sum:     60.0,
-#   count:   3,
-#   rate:    1.0,
-#   average: 20.0,
-#   min:     10.0,
-#   max:     30.0,
-#   median:  20.0,
-#   p95:     28.0
+#   sum:      60.0,
+#   count:    3,
+#   rate:     1.0,
+#   average:  20.0,
+#   min:      10.0,
+#   max:      30.0,
+#   median:   20.0,
+#   p95:      28.0,
+#   variance: 66.666...,
+#   stddev:   8.164...
 # }
 ```
 
@@ -149,8 +166,10 @@ tracker.count   # => 0
 | `#quantiles(*fractions)` | Hash mapping each fraction (0.0–1.0) to its percentile value in one pass |
 | `#min` | Minimum recorded value in the window |
 | `#max` | Maximum recorded value in the window |
+| `#variance` | Population variance of values in the window |
+| `#stddev` | Population standard deviation of values in the window |
 | `#histogram(buckets: 10)` | Value distribution as array of `{ range:, count: }` hashes |
-| `#snapshot` | Atomic hash of all stats: `sum`, `count`, `rate`, `average`, `min`, `max`, `median`, `p95` |
+| `#snapshot` | Atomic hash of all stats: `sum`, `count`, `rate`, `average`, `min`, `max`, `median`, `p95`, `variance`, `stddev` |
 | `#reset` | Clear all recorded data |
 
 ## Development

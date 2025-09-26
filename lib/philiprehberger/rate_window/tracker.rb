@@ -168,6 +168,26 @@ module Philiprehberger
         end
       end
 
+      # Population variance of values recorded in the current window.
+      #
+      # @return [Float] variance, or 0.0 if no recordings
+      def variance
+        @mutex.synchronize do
+          cleanup
+          compute_variance
+        end
+      end
+
+      # Population standard deviation of values recorded in the current window.
+      #
+      # @return [Float] standard deviation, or 0.0 if no recordings
+      def stddev
+        @mutex.synchronize do
+          cleanup
+          Math.sqrt(compute_variance)
+        end
+      end
+
       # Returns a histogram of value distribution across equal-width buckets.
       #
       # @param buckets [Integer] number of histogram buckets (default: 10)
@@ -207,11 +227,12 @@ module Philiprehberger
       # Take an atomic snapshot of all stats in a single mutex acquisition.
       #
       # Runs cleanup once, then computes sum, count, rate, average, min, max,
-      # median, and p95 in a single pass under the same lock.
+      # median, p95, variance, and stddev in a single pass under the same
+      # lock.
       #
       # @return [Hash] snapshot with keys :sum, :count, :rate, :average,
-      #   :min, :max, :median, :p95. Returns zero/nil-safe values for an
-      #   empty tracker.
+      #   :min, :max, :median, :p95, :variance, :stddev. Returns
+      #   zero/nil-safe values for an empty tracker.
       def snapshot
         @mutex.synchronize do
           cleanup
@@ -230,6 +251,7 @@ module Philiprehberger
 
           values = collect_values
           sorted = values.sort
+          var = values.empty? ? 0.0 : population_variance(values)
 
           {
             sum: total_sum,
@@ -239,7 +261,9 @@ module Philiprehberger
             min: min_val == Float::INFINITY ? 0.0 : min_val,
             max: max_val == -Float::INFINITY ? 0.0 : max_val,
             median: sorted.empty? ? 0.0 : interpolate(sorted, 0.5),
-            p95: sorted.empty? ? 0.0 : interpolate(sorted, 0.95)
+            p95: sorted.empty? ? 0.0 : interpolate(sorted, 0.95),
+            variance: var,
+            stddev: Math.sqrt(var)
           }
         end
       end
@@ -298,6 +322,20 @@ module Philiprehberger
           result << @buckets[i] if @counts[i].positive?
         end
         result
+      end
+
+      def compute_variance
+        values = collect_values
+        return 0.0 if values.empty?
+
+        population_variance(values)
+      end
+
+      def population_variance(values)
+        n = values.length
+        mean = values.sum.to_f / n
+        sum_sq = values.sum(0.0) { |v| (v - mean)**2 }
+        sum_sq / n
       end
 
       def interpolate(sorted, fraction)
