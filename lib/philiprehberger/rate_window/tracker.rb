@@ -7,8 +7,8 @@ module Philiprehberger
       # @param window [Numeric] window duration in seconds
       # @param resolution [Numeric] bucket size in seconds
       def initialize(window: 60, resolution: 1)
-        raise Error, 'window must be positive' unless window > 0
-        raise Error, 'resolution must be positive' unless resolution > 0
+        raise Error, 'window must be positive' unless window.positive?
+        raise Error, 'resolution must be positive' unless resolution.positive?
         raise Error, 'resolution must be <= window' unless resolution <= window
 
         @window = window.to_f
@@ -73,7 +73,7 @@ module Philiprehberger
         @mutex.synchronize do
           cleanup
           total_count = @counts.sum
-          return 0.0 if total_count == 0
+          return 0.0 if total_count.zero?
 
           @buckets.sum / total_count
         end
@@ -84,7 +84,7 @@ module Philiprehberger
       # @param p [Numeric] percentile (0-100)
       # @return [Float] the percentile value
       def percentile(p)
-        raise Error, 'percentile must be between 0 and 100' unless p >= 0 && p <= 100
+        raise Error, 'percentile must be between 0 and 100' unless p.between?(0, 100)
 
         @mutex.synchronize do
           cleanup
@@ -127,7 +127,7 @@ module Philiprehberger
         if elapsed >= @bucket_count
           @buckets.fill(0.0)
           @counts.fill(0)
-        elsif elapsed > 0
+        elsif elapsed.positive?
           elapsed.times do |i|
             idx = (@last_bucket_index + 1 + i) % @bucket_count
             @buckets[idx] = 0.0
@@ -142,7 +142,7 @@ module Philiprehberger
       def collect_values
         result = []
         @bucket_count.times do |i|
-          result << @buckets[i] if @counts[i] > 0
+          result << @buckets[i] if @counts[i].positive?
         end
         result
       end

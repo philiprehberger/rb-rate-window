@@ -269,7 +269,13 @@ RSpec.describe Philiprehberger::RateWindow do
         Thread.new { 50.times { tracker.record(1) } }
       end
       threads += 5.times.map do
-        Thread.new { 50.times { tracker.sum; tracker.count; tracker.rate } }
+        Thread.new do
+          50.times do
+            tracker.sum
+            tracker.count
+            tracker.rate
+          end
+        end
       end
       threads.each(&:join)
 
