@@ -3,6 +3,7 @@
 [![Tests](https://github.com/philiprehberger/rb-rate-window/actions/workflows/ci.yml/badge.svg)](https://github.com/philiprehberger/rb-rate-window/actions/workflows/ci.yml)
 [![Gem Version](https://badge.fury.io/rb/philiprehberger-rate_window.svg)](https://rubygems.org/gems/philiprehberger-rate_window)
 [![License](https://img.shields.io/github/license/philiprehberger/rb-rate-window)](LICENSE)
+[![Sponsor](https://img.shields.io/badge/sponsor-GitHub%20Sponsors-ec6cb9)](https://github.com/sponsors/philiprehberger)
 
 Time-windowed rate tracker with configurable resolution
 
