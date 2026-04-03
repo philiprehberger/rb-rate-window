@@ -47,9 +47,36 @@ tracker.average   # => 3.0
 tracker = Philiprehberger::RateWindow.new(window: 60, resolution: 1)
 100.times { |i| tracker.record(i) }
 
-tracker.percentile(50)   # => median value
+tracker.percentile(50)   # => median value (with linear interpolation)
 tracker.percentile(95)   # => 95th percentile
 tracker.percentile(99)   # => 99th percentile
+tracker.median           # => shortcut for percentile(50)
+```
+
+### Min / Max
+
+```ruby
+tracker = Philiprehberger::RateWindow.new(window: 60, resolution: 1)
+tracker.record(5)
+tracker.record(20)
+tracker.record(3)
+
+tracker.min   # => 3.0
+tracker.max   # => 20.0
+```
+
+### Histogram
+
+```ruby
+tracker = Philiprehberger::RateWindow.new(window: 60, resolution: 1)
+100.times { |i| tracker.record(i) }
+
+tracker.histogram(buckets: 5)
+# => [
+#   { range: 0.0..20.0, count: ... },
+#   { range: 20.0..40.0, count: ... },
+#   ...
+# ]
 ```
 
 ### Custom Resolution
@@ -79,7 +106,11 @@ tracker.count   # => 0
 | `#sum` | Sum of all values in the window |
 | `#count` | Number of recordings in the window |
 | `#average` | Average value per recording |
-| `#percentile(p)` | Calculate percentile (0-100) of bucket values |
+| `#percentile(p)` | Calculate percentile (0-100) with linear interpolation |
+| `#median` | Shortcut for `percentile(50)` |
+| `#min` | Minimum recorded value in the window |
+| `#max` | Maximum recorded value in the window |
+| `#histogram(buckets: 10)` | Value distribution as array of `{ range:, count: }` hashes |
 | `#reset` | Clear all recorded data |
 
 ## Development
