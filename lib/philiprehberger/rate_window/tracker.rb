@@ -30,7 +30,11 @@ module Philiprehberger
       def record(value = 1)
         @mutex.synchronize do
           cleanup
-          idx = current_bucket_index % @bucket_count
+          # Use @last_bucket_index (set by cleanup) rather than re-reading
+          # the clock: the next cleanup zeros (@last_bucket_index, current],
+          # so a fresh time read here can land in a bucket that the next
+          # cleanup wipes if the thread was paused between the two reads.
+          idx = @last_bucket_index % @bucket_count
           val = value.to_f
           @buckets[idx] += val
           @counts[idx] += 1

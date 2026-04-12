@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.6.1] - 2026-04-19
+
+### Fixed
+- `Tracker#record` could lose values when the thread paused (GC, scheduler) between cleanup and the bucket-index read; the value landed in a bucket the next cleanup then zeroed. Records now write to the bucket at the cleanup boundary, so the cleanup invariant protects them.
+
 ## [0.6.0] - 2026-04-18
 
 ### Added
