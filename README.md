@@ -51,6 +51,7 @@ tracker.percentile(50)   # => median value (with linear interpolation)
 tracker.percentile(95)   # => 95th percentile
 tracker.percentile(99)   # => 99th percentile
 tracker.median           # => shortcut for percentile(50)
+tracker.p95              # => shortcut for percentile(95)
 ```
 
 ### Min / Max
@@ -108,6 +109,7 @@ tracker.count   # => 0
 | `#average` | Average value per recording |
 | `#percentile(p)` | Calculate percentile (0-100) with linear interpolation |
 | `#median` | Shortcut for `percentile(50)` |
+| `#p95` | Shortcut for `percentile(95)` |
 | `#min` | Minimum recorded value in the window |
 | `#max` | Maximum recorded value in the window |
 | `#histogram(buckets: 10)` | Value distribution as array of `{ range:, count: }` hashes |

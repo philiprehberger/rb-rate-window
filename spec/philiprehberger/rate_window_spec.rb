@@ -252,6 +252,39 @@ RSpec.describe Philiprehberger::RateWindow do
     end
   end
 
+  describe '#p95' do
+    let(:tracker) { described_class.new(window: 60, resolution: 1) }
+
+    it 'matches percentile(95) on identical input' do
+      tracker.record(10)
+      tracker.record(20)
+      tracker.record(30)
+      expect(tracker.p95).to eq(tracker.percentile(95))
+    end
+
+    it 'returns the same value as percentile(95) on an empty tracker' do
+      expect(tracker.p95).to eq(tracker.percentile(95))
+    end
+
+    it 'returns zero on empty tracker' do
+      expect(tracker.p95).to eq(0.0)
+    end
+
+    it 'matches the 95th percentile after adding 100 values' do
+      t = described_class.new(window: 60, resolution: 0.001)
+      100.times do |i|
+        t.record(i)
+        sleep(0.002)
+      end
+      expect(t.p95).to eq(t.percentile(95))
+    end
+
+    it 'returns a Float' do
+      tracker.record(5)
+      expect(tracker.p95).to be_a(Float)
+    end
+  end
+
   describe '#min' do
     let(:tracker) { described_class.new(window: 60, resolution: 1) }
 

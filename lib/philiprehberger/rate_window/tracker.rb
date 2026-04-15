@@ -115,6 +115,13 @@ module Philiprehberger
         percentile(50)
       end
 
+      # 95th percentile value across active buckets (shortcut for percentile(95)).
+      #
+      # @return [Float] the 95th percentile value
+      def p95
+        percentile(95)
+      end
+
       # Minimum recorded value in the current window.
       #
       # @return [Float] minimum value, or 0.0 if no recordings
