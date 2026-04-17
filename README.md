@@ -100,6 +100,31 @@ tracker.record(42)
 tracker.rate    # => rate per second over 5 minutes
 ```
 
+### Snapshot
+
+Get all stats atomically in a single call (one mutex acquisition, one cleanup pass):
+
+```ruby
+tracker = Philiprehberger::RateWindow.new(window: 60, resolution: 1)
+tracker.record(10)
+tracker.record(20)
+tracker.record(30)
+
+tracker.snapshot
+# => {
+#   sum:     60.0,
+#   count:   3,
+#   rate:    1.0,
+#   average: 20.0,
+#   min:     10.0,
+#   max:     30.0,
+#   median:  20.0,
+#   p95:     28.0
+# }
+```
+
+All values reflect the same instant. An empty tracker returns `0.0` for all numeric fields and `0` for `count`.
+
 ### Reset
 
 ```ruby
@@ -125,6 +150,7 @@ tracker.count   # => 0
 | `#min` | Minimum recorded value in the window |
 | `#max` | Maximum recorded value in the window |
 | `#histogram(buckets: 10)` | Value distribution as array of `{ range:, count: }` hashes |
+| `#snapshot` | Atomic hash of all stats: `sum`, `count`, `rate`, `average`, `min`, `max`, `median`, `p95` |
 | `#reset` | Clear all recorded data |
 
 ## Development

@@ -590,6 +590,98 @@ RSpec.describe Philiprehberger::RateWindow do
     end
   end
 
+  describe '#snapshot' do
+    let(:tracker) { described_class.new(window: 60, resolution: 1) }
+
+    it 'returns a hash with all expected keys' do
+      tracker.record(10)
+      tracker.record(20)
+      tracker.record(30)
+
+      result = tracker.snapshot
+
+      expect(result).to be_a(Hash)
+      expect(result.keys).to contain_exactly(:sum, :count, :rate, :average, :min, :max, :median, :p95)
+    end
+
+    it 'returns correct values with data' do
+      tracker.record(10)
+      tracker.record(20)
+      tracker.record(30)
+
+      result = tracker.snapshot
+
+      expect(result[:sum]).to eq(60.0)
+      expect(result[:count]).to eq(3)
+      expect(result[:rate]).to eq(1.0)
+      expect(result[:average]).to eq(20.0)
+      expect(result[:min]).to eq(10.0)
+      expect(result[:max]).to eq(30.0)
+      expect(result[:median]).to be_a(Float)
+      expect(result[:p95]).to be_a(Float)
+    end
+
+    it 'returns zero/safe values for an empty tracker' do
+      result = tracker.snapshot
+
+      expect(result[:sum]).to eq(0.0)
+      expect(result[:count]).to eq(0)
+      expect(result[:rate]).to eq(0.0)
+      expect(result[:average]).to eq(0.0)
+      expect(result[:min]).to eq(0.0)
+      expect(result[:max]).to eq(0.0)
+      expect(result[:median]).to eq(0.0)
+      expect(result[:p95]).to eq(0.0)
+    end
+
+    it 'is consistent: all values reflect the same instant' do
+      tracker.record(5)
+      tracker.record(15)
+      tracker.record(25)
+
+      snap = tracker.snapshot
+
+      expect(snap[:sum]).to eq(tracker.sum)
+      expect(snap[:count]).to eq(tracker.count)
+      expect(snap[:rate]).to eq(tracker.rate)
+      expect(snap[:average]).to eq(tracker.average)
+      expect(snap[:min]).to eq(tracker.min)
+      expect(snap[:max]).to eq(tracker.max)
+      expect(snap[:median]).to eq(tracker.median)
+      expect(snap[:p95]).to eq(tracker.p95)
+    end
+
+    it 'median and p95 match their individual method equivalents' do
+      tracker.record(10)
+      tracker.record(20)
+      tracker.record(30)
+
+      snap = tracker.snapshot
+
+      expect(snap[:median]).to eq(tracker.median)
+      expect(snap[:p95]).to eq(tracker.p95)
+    end
+
+    it 'returns Float for numeric fields' do
+      tracker.record(7)
+
+      snap = tracker.snapshot
+
+      expect(snap[:sum]).to be_a(Float)
+      expect(snap[:rate]).to be_a(Float)
+      expect(snap[:average]).to be_a(Float)
+      expect(snap[:min]).to be_a(Float)
+      expect(snap[:max]).to be_a(Float)
+      expect(snap[:median]).to be_a(Float)
+      expect(snap[:p95]).to be_a(Float)
+    end
+
+    it 'returns Integer for count' do
+      tracker.record(1)
+      expect(tracker.snapshot[:count]).to be_a(Integer)
+    end
+  end
+
   describe '#reset' do
     let(:tracker) { described_class.new(window: 60, resolution: 1) }
 
