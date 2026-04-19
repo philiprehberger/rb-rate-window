@@ -590,6 +590,76 @@ RSpec.describe Philiprehberger::RateWindow do
     end
   end
 
+  describe '#variance' do
+    let(:tracker) { described_class.new(window: 60, resolution: 1) }
+
+    it 'returns 0.0 on an empty tracker' do
+      expect(tracker.variance).to eq(0.0)
+    end
+
+    it 'returns 0.0 for a single value' do
+      tracker.record(42)
+      expect(tracker.variance).to eq(0.0)
+    end
+
+    it 'computes population variance for a known dataset' do
+      t = described_class.new(window: 60, resolution: 0.001)
+      [2, 4, 4, 4, 5, 5, 7, 9].each do |v|
+        t.record(v)
+        sleep(0.002)
+      end
+      expect(t.variance).to eq(4.0)
+    end
+
+    it 'excludes values outside the current window' do
+      t = described_class.new(window: 0.05, resolution: 0.01)
+      t.record(100)
+      sleep(0.1)
+      t.record(5)
+      expect(t.variance).to eq(0.0)
+    end
+
+    it 'returns a Float' do
+      tracker.record(1)
+      expect(tracker.variance).to be_a(Float)
+    end
+  end
+
+  describe '#stddev' do
+    let(:tracker) { described_class.new(window: 60, resolution: 1) }
+
+    it 'returns 0.0 on an empty tracker' do
+      expect(tracker.stddev).to eq(0.0)
+    end
+
+    it 'returns 0.0 for a single value' do
+      tracker.record(42)
+      expect(tracker.stddev).to eq(0.0)
+    end
+
+    it 'computes population stddev for a known dataset' do
+      t = described_class.new(window: 60, resolution: 0.001)
+      [2, 4, 4, 4, 5, 5, 7, 9].each do |v|
+        t.record(v)
+        sleep(0.002)
+      end
+      expect(t.stddev).to eq(2.0)
+    end
+
+    it 'excludes values outside the current window' do
+      t = described_class.new(window: 0.05, resolution: 0.01)
+      t.record(100)
+      sleep(0.1)
+      t.record(5)
+      expect(t.stddev).to eq(0.0)
+    end
+
+    it 'returns a Float' do
+      tracker.record(1)
+      expect(tracker.stddev).to be_a(Float)
+    end
+  end
+
   describe '#snapshot' do
     let(:tracker) { described_class.new(window: 60, resolution: 1) }
 
@@ -601,7 +671,21 @@ RSpec.describe Philiprehberger::RateWindow do
       result = tracker.snapshot
 
       expect(result).to be_a(Hash)
-      expect(result.keys).to contain_exactly(:sum, :count, :rate, :average, :min, :max, :median, :p95)
+      expect(result.keys).to contain_exactly(
+        :sum, :count, :rate, :average, :min, :max, :median, :p95, :variance, :stddev
+      )
+    end
+
+    it 'includes :variance and :stddev keys' do
+      tracker.record(10)
+      tracker.record(20)
+      tracker.record(30)
+
+      result = tracker.snapshot
+
+      expect(result).to include(:variance, :stddev)
+      expect(result[:variance]).to be_a(Float)
+      expect(result[:stddev]).to be_a(Float)
     end
 
     it 'returns correct values with data' do
@@ -632,6 +716,8 @@ RSpec.describe Philiprehberger::RateWindow do
       expect(result[:max]).to eq(0.0)
       expect(result[:median]).to eq(0.0)
       expect(result[:p95]).to eq(0.0)
+      expect(result[:variance]).to eq(0.0)
+      expect(result[:stddev]).to eq(0.0)
     end
 
     it 'is consistent: all values reflect the same instant' do
