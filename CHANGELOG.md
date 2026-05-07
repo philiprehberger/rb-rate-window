@@ -7,6 +7,11 @@ and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0
 
 ## [Unreleased]
 
+## [0.7.0] - 2026-05-07
+
+### Added
+- `Tracker#snapshot_and_reset` — returns the current snapshot and clears all buckets in a single atomic operation. The standard pattern for periodic metric exporters.
+
 ## [0.6.1] - 2026-04-19
 
 ### Fixed

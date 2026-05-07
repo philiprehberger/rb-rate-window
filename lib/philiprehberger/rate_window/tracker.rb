@@ -238,56 +238,77 @@ module Philiprehberger
       #   :min, :max, :median, :p95, :variance, :stddev. Returns
       #   zero/nil-safe values for an empty tracker.
       def snapshot
-        @mutex.synchronize do
-          cleanup
-
-          total_sum = @buckets.sum
-          total_count = @counts.sum
-
-          min_val = Float::INFINITY
-          max_val = -Float::INFINITY
-          @bucket_count.times do |i|
-            if @counts[i].positive?
-              min_val = @mins[i] if @mins[i] < min_val
-              max_val = @maxs[i] if @maxs[i] > max_val
-            end
-          end
-
-          values = collect_values
-          sorted = values.sort
-          var = values.empty? ? 0.0 : population_variance(values)
-
-          {
-            sum: total_sum,
-            count: total_count,
-            rate: total_sum / @window,
-            average: total_count.zero? ? 0.0 : total_sum / total_count,
-            min: min_val == Float::INFINITY ? 0.0 : min_val,
-            max: max_val == -Float::INFINITY ? 0.0 : max_val,
-            median: sorted.empty? ? 0.0 : interpolate(sorted, 0.5),
-            p95: sorted.empty? ? 0.0 : interpolate(sorted, 0.95),
-            variance: var,
-            stddev: Math.sqrt(var)
-          }
-        end
+        @mutex.synchronize { build_snapshot }
       end
 
       # Reset all buckets.
       #
       # @return [self]
       def reset
-        @mutex.synchronize do
-          @buckets.fill(0.0)
-          @counts.fill(0)
-          @mins.fill(Float::INFINITY)
-          @maxs.fill(-Float::INFINITY)
-          @last_bucket_index = current_bucket_index
-          @last_time = now
-        end
+        @mutex.synchronize { reset_state }
         self
       end
 
+      # Capture the current snapshot and reset the tracker atomically.
+      #
+      # Equivalent to calling +snapshot+ followed by +reset+, but with a
+      # single lock acquisition so no samples slip in between the two
+      # operations. The standard pattern for periodic metric exporters
+      # that want to capture-and-clear without losing samples.
+      #
+      # @return [Hash] snapshot hash (same shape as +snapshot+) captured
+      #   immediately before the buckets were cleared.
+      def snapshot_and_reset
+        @mutex.synchronize do
+          snap = build_snapshot
+          reset_state
+          snap
+        end
+      end
+
       private
+
+      def build_snapshot
+        cleanup
+
+        total_sum = @buckets.sum
+        total_count = @counts.sum
+
+        min_val = Float::INFINITY
+        max_val = -Float::INFINITY
+        @bucket_count.times do |i|
+          if @counts[i].positive?
+            min_val = @mins[i] if @mins[i] < min_val
+            max_val = @maxs[i] if @maxs[i] > max_val
+          end
+        end
+
+        values = collect_values
+        sorted = values.sort
+        var = values.empty? ? 0.0 : population_variance(values)
+
+        {
+          sum: total_sum,
+          count: total_count,
+          rate: total_sum / @window,
+          average: total_count.zero? ? 0.0 : total_sum / total_count,
+          min: min_val == Float::INFINITY ? 0.0 : min_val,
+          max: max_val == -Float::INFINITY ? 0.0 : max_val,
+          median: sorted.empty? ? 0.0 : interpolate(sorted, 0.5),
+          p95: sorted.empty? ? 0.0 : interpolate(sorted, 0.95),
+          variance: var,
+          stddev: Math.sqrt(var)
+        }
+      end
+
+      def reset_state
+        @buckets.fill(0.0)
+        @counts.fill(0)
+        @mins.fill(Float::INFINITY)
+        @maxs.fill(-Float::INFINITY)
+        @last_bucket_index = current_bucket_index
+        @last_time = now
+      end
 
       def now
         Process.clock_gettime(Process::CLOCK_MONOTONIC)

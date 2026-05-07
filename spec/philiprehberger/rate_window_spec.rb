@@ -821,6 +821,106 @@ RSpec.describe Philiprehberger::RateWindow do
     end
   end
 
+  describe '#snapshot_and_reset' do
+    let(:tracker) { described_class.new(window: 60, resolution: 1) }
+
+    it 'returns the same hash shape as #snapshot on an empty tracker' do
+      result = tracker.snapshot_and_reset
+
+      expect(result).to be_a(Hash)
+      expect(result.keys).to contain_exactly(
+        :sum, :count, :rate, :average, :min, :max, :median, :p95, :variance, :stddev
+      )
+    end
+
+    it 'returns zero/safe values on an empty tracker' do
+      result = tracker.snapshot_and_reset
+
+      expect(result[:sum]).to eq(0.0)
+      expect(result[:count]).to eq(0)
+      expect(result[:rate]).to eq(0.0)
+      expect(result[:average]).to eq(0.0)
+      expect(result[:min]).to eq(0.0)
+      expect(result[:max]).to eq(0.0)
+      expect(result[:median]).to eq(0.0)
+      expect(result[:p95]).to eq(0.0)
+      expect(result[:variance]).to eq(0.0)
+      expect(result[:stddev]).to eq(0.0)
+    end
+
+    it 'returns the current snapshot with non-zero values after recordings' do
+      tracker.record(10)
+      tracker.record(20)
+      tracker.record(30)
+
+      result = tracker.snapshot_and_reset
+
+      expect(result[:sum]).to eq(60.0)
+      expect(result[:count]).to eq(3)
+      expect(result[:average]).to eq(20.0)
+      expect(result[:min]).to eq(10.0)
+      expect(result[:max]).to eq(30.0)
+    end
+
+    it 'clears all buckets so subsequent #snapshot returns zeros' do
+      tracker.record(10)
+      tracker.record(20)
+      tracker.record(30)
+
+      tracker.snapshot_and_reset
+      after = tracker.snapshot
+
+      expect(after[:sum]).to eq(0.0)
+      expect(after[:count]).to eq(0)
+      expect(after[:rate]).to eq(0.0)
+      expect(after[:average]).to eq(0.0)
+      expect(after[:min]).to eq(0.0)
+      expect(after[:max]).to eq(0.0)
+      expect(after[:median]).to eq(0.0)
+      expect(after[:p95]).to eq(0.0)
+      expect(after[:variance]).to eq(0.0)
+      expect(after[:stddev]).to eq(0.0)
+    end
+
+    it 'returns a hash matching what #snapshot would have returned at the same instant' do
+      tracker.record(5)
+      tracker.record(15)
+      tracker.record(25)
+
+      # Compare two trackers with identical recordings: the captured
+      # snapshot from snapshot_and_reset should match a fresh snapshot
+      # from a peer tracker recorded in the same window.
+      peer = described_class.new(window: 60, resolution: 1)
+      peer.record(5)
+      peer.record(15)
+      peer.record(25)
+
+      captured = tracker.snapshot_and_reset
+      expected = peer.snapshot
+
+      expect(captured.keys).to eq(expected.keys)
+      expect(captured[:sum]).to eq(expected[:sum])
+      expect(captured[:count]).to eq(expected[:count])
+      expect(captured[:average]).to eq(expected[:average])
+      expect(captured[:min]).to eq(expected[:min])
+      expect(captured[:max]).to eq(expected[:max])
+      expect(captured[:median]).to eq(expected[:median])
+      expect(captured[:p95]).to eq(expected[:p95])
+      expect(captured[:variance]).to eq(expected[:variance])
+      expect(captured[:stddev]).to eq(expected[:stddev])
+    end
+
+    it 'allows recording new values after snapshot_and_reset' do
+      tracker.record(10)
+      tracker.snapshot_and_reset
+
+      tracker.record(7)
+
+      expect(tracker.sum).to eq(7.0)
+      expect(tracker.count).to eq(1)
+    end
+  end
+
   describe 'thread safety' do
     let(:tracker) { described_class.new(window: 60, resolution: 1) }
 

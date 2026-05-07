@@ -150,6 +150,23 @@ tracker.sum     # => 0.0
 tracker.count   # => 0
 ```
 
+### Snapshot and reset (periodic metric exporter)
+
+`#snapshot_and_reset` returns the current snapshot hash and clears all
+buckets in a single mutex acquisition, so no samples can slip in between
+the read and the clear. This is the standard pattern for periodic metric
+exporters that want to capture-and-clear without losing samples between
+two separate calls:
+
+```ruby
+# Periodic metric exporter pattern
+loop do
+  stats = tracker.snapshot_and_reset
+  publish_metrics(stats)
+  sleep 60
+end
+```
+
 ## API
 
 | Method | Description |
@@ -170,6 +187,7 @@ tracker.count   # => 0
 | `#stddev` | Population standard deviation of values in the window |
 | `#histogram(buckets: 10)` | Value distribution as array of `{ range:, count: }` hashes |
 | `#snapshot` | Atomic hash of all stats: `sum`, `count`, `rate`, `average`, `min`, `max`, `median`, `p95`, `variance`, `stddev` |
+| `#snapshot_and_reset` | Returns the current snapshot and atomically resets the tracker |
 | `#reset` | Clear all recorded data |
 
 ## Development
